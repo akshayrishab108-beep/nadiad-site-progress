@@ -60,7 +60,7 @@ async function flush(): Promise<void> {
         try { return { user_id: uid as string, key: k, value: JSON.parse(v), updated_at: meta[k] || new Date().toISOString() }; }
         catch { return null; }
     }).filter(Boolean) as { user_id: string; key: string; value: unknown; updated_at: string }[];
-    const { error } = await sb.from('tracker_kv').upsert(rows);
+    const { error } = await sb.from('tracker_kv2').upsert(rows);
     if (error) return; // keep entries queued; retried on next write or sign-in
     pending.clear();
 }
@@ -75,7 +75,7 @@ export async function hydrateFromCloud(): Promise<boolean> {
     for (let attempt = 0; attempt < 3; attempt++) {
         if (attempt > 0) await new Promise(r => setTimeout(r, 900 * attempt));
         try {
-            const { data, error } = await sb.from('tracker_kv').select('key,value,updated_at');
+            const { data, error } = await sb.from('tracker_kv2').select('key,value,updated_at');
             if (error || !data) continue;
             hydrating = true;
             try {
