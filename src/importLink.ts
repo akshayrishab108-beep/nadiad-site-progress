@@ -26,7 +26,39 @@ function validProject(o: any): boolean {
     return true;
 }
 
+// Inline confirm, not window.confirm: a native confirm blocks the page and is
+// a poor experience on phones. Same rule: never overwrite without a tap.
+function askInline(message: string): Promise<boolean> {
+    return new Promise(resolve => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,18,25,.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px';
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#fff;color:#14181f;border-radius:14px;padding:20px;max-width:360px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.25)';
+        const p = document.createElement('p');
+        p.textContent = message;
+        p.style.cssText = 'margin:0 0 16px;font:15px/1.45 system-ui,sans-serif';
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:10px;justify-content:flex-end';
+        const mk = (label: string, primary: boolean) => {
+            const b = document.createElement('button');
+            b.textContent = label;
+            b.style.cssText = 'min-height:44px;padding:0 16px;border-radius:10px;font:600 14px system-ui,sans-serif;border:1px solid ' + (primary ? '#14181f' : '#c8ccd4') + ';background:' + (primary ? '#14181f' : '#fff') + ';color:' + (primary ? '#fff' : '#14181f');
+            return b;
+        };
+        const no = mk('Cancel', false);
+        const yes = mk('Import', true);
+        const done = (v: boolean) => { wrap.remove(); resolve(v); };
+        no.onclick = () => done(false);
+        yes.onclick = () => done(true);
+        row.append(no, yes);
+        card.append(p, row);
+        wrap.append(card);
+        document.body.append(wrap);
+    });
+}
+
 export function runImport(): void {
+    void (async () => {
     try {
         const h = window.location.hash;
         if (!h.startsWith('#import=')) return;
@@ -41,10 +73,13 @@ export function runImport(): void {
         const next = JSON.stringify({ ...data, id });
         const existing = localStorage.getItem('p.' + id + '.v1');
         if (existing && existing !== next) {
-            if (!window.confirm(`Import chart "${data.name || 'My site'}"? This replaces the chart currently saved on this phone.`)) return;
+            if (!(await askInline(`Import chart "${data.name || 'My site'}"? This replaces the chart currently saved on this phone.`))) return;
         }
         localStorage.setItem('idx.v1', JSON.stringify({ list: [{ id, name: data.name || 'My site' }], active: id }));
         localStorage.setItem('p.' + id + '.v1', next);
         localStorage.setItem('h.' + id + '.v1', JSON.stringify({ snaps: [] }));
+        // State was written outside React: reload so every store picks it up.
+        location.reload();
     } catch { /* ignore invalid import links */ }
+    })();
 }
