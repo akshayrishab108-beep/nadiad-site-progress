@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocalState } from './localState';
+import { AdminPanel } from './AdminPanel';
 import type { Hist, Index, Item, Loc, Project, Snap, St, Trade } from './types';
 
 const LABEL: Record<St, string> = { r: 'Not started', o: 'WIP', g: 'Done', n: 'NA' };
@@ -300,6 +301,7 @@ export function ProjectScreen({ id, initial, onRename, sync }: { id: string; ini
             <p className="small">New locations start as Not started for every item.</p>
         </div>
         <Backup p={p} onImport={np => commit({ ...np, id: p.id })} />
+        <AdminPanel />
         <p className="small">Storage used by this project: about {used} KB, saved in this phone's browser. {savedP.message}</p>
     </div>;
 

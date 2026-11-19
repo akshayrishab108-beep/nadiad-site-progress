@@ -118,6 +118,12 @@ export function useGate(): GateState {
     return { kind: 'ready', session };
 }
 
+export async function signInWithPassword(email: string, password: string): Promise<string> {
+    if (!sb) return 'Sync is not configured.';
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    return error ? 'Could not sign in: ' + error.message : '';
+}
+
 export async function sendLoginLink(email: string): Promise<string> {
     if (!sb) return 'Sync is not configured.';
     const { error } = await sb.auth.signInWithOtp({

@@ -55,6 +55,10 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .btn.danger { color: #b3261e; border-color: #e6b8b4; } .btn.primary { background: var(--ds-ink); color: #fff; width: 100%; }
 .btn:disabled { opacity: .45; cursor: default; }
 .gridwrap { margin-top: 8px; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--ds-ink); text-decoration: underline; font-size: 13px; min-height: 32px; }
+.pw-once { border: 1px dashed var(--ds-ink); border-radius: 10px; padding: 10px 12px; margin: 10px 0; background: #fffdf5; }
+.pw-once .pw { font-size: 16px; background: #f0efe9; padding: 2px 6px; border-radius: 6px; user-select: all; }
+.pw-once .btn { margin-right: 8px; }
 .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .card { border: 1px solid var(--ds-hairline); border-radius: 12px; background: #fff; padding: 12px 14px; margin-bottom: 12px; }
 .card h3 { margin: 0 0 6px; font-size: 17px; }
