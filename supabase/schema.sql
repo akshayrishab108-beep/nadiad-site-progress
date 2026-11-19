@@ -1,6 +1,6 @@
 -- Site Progress Tracker: private per-user cloud state.
--- Run once in the Supabase SQL editor of the tracker's OWN project
--- (never in the CT Hub project). Then disable public sign-ups:
+-- Run once in the Supabase SQL editor of the tracker's own project
+-- Then disable public sign-ups:
 -- Authentication > Sign In / Providers > Email > "Allow new users to sign up" off,
 -- after the owner's first magic-link sign-in has created their user.
 
