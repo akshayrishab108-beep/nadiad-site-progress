@@ -66,39 +66,53 @@ async function flush(): Promise<void> {
 }
 
 // Merges cloud and local state before the app renders, per planMerge.
-export async function hydrateFromCloud(): Promise<void> {
-    if (!sb || !uid) return;
-    const { data, error } = await sb.from('tracker_kv').select('key,value,updated_at');
-    if (error || !data) return;
-    hydrating = true;
-    try {
-        const meta = metaRead();
-        const localEntries: Record<string, string | null> = {};
-        for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            if (k && TRACKER_KEY.test(k)) localEntries[k] = localStorage.getItem(k);
+// FAIL CLOSED: returns false when the cloud read cannot be completed (network
+// error, transient 5xx, empty-but-erroring response), after retries. The gate
+// must not mount the app on false — mounting unhydrated once let a pristine
+// default project overwrite a populated cloud.
+export async function hydrateFromCloud(): Promise<boolean> {
+    if (!sb || !uid) return true; // local-only build: nothing to hydrate
+    for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 900 * attempt));
+        try {
+            const { data, error } = await sb.from('tracker_kv').select('key,value,updated_at');
+            if (error || !data) continue;
+            hydrating = true;
+            try {
+                const meta = metaRead();
+                const localEntries: Record<string, string | null> = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && TRACKER_KEY.test(k)) localEntries[k] = localStorage.getItem(k);
+                }
+                const plan = planMerge(localEntries, meta, data as RemoteRow[]);
+                for (const [k, v] of Object.entries(plan.localWrites)) origSet!(k, v);
+                Object.assign(meta, plan.metaUpdates);
+                for (const [k, raw] of Object.entries(plan.pushRaw)) pending.set(k, raw);
+                metaWrite(meta);
+            } finally {
+                hydrating = false;
+            }
+            await flush();
+            return true;
+        } catch {
+            // retry
         }
-        const plan = planMerge(localEntries, meta, data as RemoteRow[]);
-        for (const [k, v] of Object.entries(plan.localWrites)) origSet!(k, v);
-        Object.assign(meta, plan.metaUpdates);
-        for (const [k, raw] of Object.entries(plan.pushRaw)) pending.set(k, raw);
-        metaWrite(meta);
-    } finally {
-        hydrating = false;
     }
-    await flush();
+    return false;
 }
 
 export type GateState =
     | { kind: 'local' }        // no backend configured (development builds)
     | { kind: 'config-error' } // hosted build missing backend config: fail closed
+    | { kind: 'sync-error' }   // signed in but cloud hydration failed after retries: fail closed
     | { kind: 'loading' }
     | { kind: 'login' }
     | { kind: 'ready'; session: Session };
 
 export function useGate(): GateState {
     const [session, setSession] = useState<Session | null | 'loading'>(syncEnabled ? 'loading' : null);
-    const [hydrated, setHydrated] = useState(false);
+    const [hydrated, setHydrated] = useState<'no' | 'ok' | 'error'>('no');
     useEffect(() => {
         if (!sb) return;
         sb.auth.getSession().then(r => setSession(r.data.session));
@@ -108,13 +122,14 @@ export function useGate(): GateState {
     useEffect(() => {
         if (!sb || !session || typeof session === 'string') return;
         installWriteThrough(session.user.id);
-        hydrateFromCloud().then(() => setHydrated(true));
+        hydrateFromCloud().then(ok => setHydrated(ok ? 'ok' : 'error'));
     }, [session]);
     if (configError) return { kind: 'config-error' };
     if (!syncEnabled) return { kind: 'local' };
     if (session === 'loading') return { kind: 'loading' };
     if (!session) return { kind: 'login' };
-    if (!hydrated) return { kind: 'loading' };
+    if (hydrated === 'error') return { kind: 'sync-error' };
+    if (hydrated !== 'ok') return { kind: 'loading' };
     return { kind: 'ready', session };
 }
 

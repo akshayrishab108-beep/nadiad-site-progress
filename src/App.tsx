@@ -77,13 +77,13 @@ export function ProjectScreen({ id, initial, onRename, sync }: { id: string; ini
     const booted = useRef(false);
 
     useEffect(() => {
+        // Record at most one progress snapshot per day. Never rewrites the
+        // project or history unchanged, so an untouched app pushes nothing.
         if (!ready || booted.current) return;
         booted.current = true;
-        setP(p);
         const t = todayIso();
         const snaps = h.snaps;
         if (!snaps.length || snaps[snaps.length - 1].d !== t) setH({ snaps: [...snaps, snapOf(p, t)].slice(-8) });
-        else setH(h);
     }, [ready]);
 
     useEffect(() => { sync(p); }, [p]);
@@ -346,9 +346,7 @@ export function App() {
     const [menu, setMenu] = useState(false);
     const [newName, setNewName] = useState('');
     const [copyStruct, setCopyStruct] = useState(true);
-    const bootI = useRef(false);
     const cur = useRef<Project | undefined>(undefined);
-    useEffect(() => { if (savedI.ready && !bootI.current) { bootI.current = true; setIdx(idx); } }, [savedI.ready]);
     if (!savedI.ready) return <div className="app"><p className="empty">Loading...</p></div>;
 
     const active = idx.list.find(x => x.id === idx.active) || idx.list[0];

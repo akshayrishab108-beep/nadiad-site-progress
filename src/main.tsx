@@ -49,6 +49,7 @@ function ConfigError() {
 function Gate() {
     const g = useGate();
     if (g.kind === 'config-error') return <ConfigError />;
+    if (g.kind === 'sync-error') return <div className="app"><p className="empty">Couldn't load your saved data from the cloud. Your data is safe; nothing was changed. Check your connection and try again.</p><button className="btn primary" onClick={() => location.reload()}>Try again</button></div>;
     if (g.kind === 'loading') return <div className="app"><p className="empty">Loading...</p></div>;
     if (g.kind === 'login') return <Login />;
     return <>
